@@ -51,6 +51,17 @@ const Home = () => {
       })
     })
 
+    socket.on('message', (newMessage) => {
+      // this is for all the other connected clients, to receive the message sent by the sender
+      // setChatHistory([...chatHistory, newMessage])
+      // this is not working :( chatHistory is ALWAYS an empty array []
+      // because chatHistory in my useEffect(() => {},[]) is evalueated just ONCE when the application starts
+      // and when the chatHistory in just an empty array
+      setChatHistory((updatedChatHistory) => [...updatedChatHistory, newMessage])
+      // this instead will work, because I'm reading and evaluating the content of chatHistory
+      // every time I need to set the new value for it
+    })
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -95,8 +106,10 @@ const Home = () => {
     }
 
     socket.emit('sendmessage', newMessage)
+
     // a useState setter function can work in two ways
-    setChatHistory((prevChatHistory) => [...prevChatHistory, newMessage])
+    setChatHistory([...chatHistory, newMessage])
+    setMessage('')
   }
 
   return (
