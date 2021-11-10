@@ -1,8 +1,9 @@
-import { Container, Row, Col, ListGroup, Form, FormControl } from 'react-bootstrap'
-import { FormEvent, useState, useEffect } from 'react'
+import { Container, Row, Col, Button, ListGroup, Form, FormControl } from 'react-bootstrap'
+import React, { FormEvent, useState, useEffect, FormEventHandler } from 'react'
 import { io } from 'socket.io-client'
 import User from '../interfaces/User'
 import Message from '../interfaces/Message'
+import { Room } from '../interfaces/Room'
 
 // 1) REFRESHING THE PAGE CONNECTS MY CLIENT TO THE SERVER
 // 2) IF THE CONNECTION ESTABLISHES CORRECTLY, THE SERVER WILL SEND ME A 'CONNECT' EVENT
@@ -34,6 +35,11 @@ const Home = () => {
       // every .on is an event listener
       console.log('Connection established!')
     })
+
+    // socket.on("message-error", ({ error }) => {
+    //   console.log(error)
+    //   alert(error)
+    // })
 
     socket.on('loggedin', () => {
       console.log('The client now is logged in!')
@@ -82,7 +88,7 @@ const Home = () => {
     }
   }
 
-  const handleUsernameSubmit = (e: FormEvent) => {
+  const handleUsernameSubmit = async (e: FormEvent) => {
     e.preventDefault()
     // console.log(e)
     // what we want to do now is sending our username to the server
@@ -91,7 +97,14 @@ const Home = () => {
       // the second parameter of .emit is a payload of data
       // it's not mandatory
       username: username,
+      room: room
     })
+
+    const res = await fetch(ADDRESS + '/chat/' + room)
+    const oldHistory = await res.json()
+
+    setChatHistory(oldHistory)
+
   }
 
   const handleMessageSubmit = (e: FormEvent) => {
@@ -105,12 +118,28 @@ const Home = () => {
       id: socket.id,
     }
 
-    socket.emit('sendmessage', newMessage)
+    socket.emit('sendmessage', { message: newMessage, room })
 
     // a useState setter function can work in two ways
     setChatHistory([...chatHistory, newMessage])
     setMessage('')
   }
+
+  const [room, setRoom] = useState<Room>("blue")
+
+  const toggleRoom = () => {
+    setRoom(r => r === "blue" ? "red" : "blue")
+  }
+
+  // const [room, setRoom] = useState("main")
+
+  // const handleRoomInput = (e: any) => {
+  //   console.log(e)
+  //   const { value } = e.target as HTMLInputElement
+  //   setRoom(value)
+  // }
+
+  console.log(room)
 
   return (
     <Container fluid className="px-4">
@@ -118,13 +147,16 @@ const Home = () => {
         <Col md={10} className="d-flex flex-column justify-content-between">
           {/* MAIN MESSAGES AREA */}
           {/* TOP SECTION: USERNAME FIELD */}
-          <Form onSubmit={handleUsernameSubmit}>
+          <Form onSubmit={handleUsernameSubmit} className="d-flex">
             <FormControl
               placeholder="Insert your username here"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               disabled={loggedIn}
             />
+            {/* <FormControl type="text" onChange={handleRoomInput} value={room} /> */}
+            {/* <button type="submit" className="btn btn-primary ml-2"> submit </button> */}
+            <Button onClick={toggleRoom} variant={room === "blue" ? "primary" : "danger"} className="ml-2">Room</Button>
           </Form>
           {/* MIDDLE SECTION: CHAT HISTORY */}
           <ListGroup>
@@ -153,9 +185,11 @@ const Home = () => {
           {/* CONNECTED USERS AREA */}
           <div className="my-3">Connected users:</div>
           <ListGroup>
-            {onlineUsers.map((user) => (
-              <ListGroup.Item key={user.id}>{user.username}</ListGroup.Item>
-            ))}
+            {onlineUsers
+              .filter(u => u.room === room)
+              .map((user) => (
+                <ListGroup.Item key={user.id}>{user.username}</ListGroup.Item>
+              ))}
           </ListGroup>
         </Col>
       </Row>
